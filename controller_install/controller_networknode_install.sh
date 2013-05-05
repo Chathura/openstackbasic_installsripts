@@ -1,6 +1,5 @@
 #!/bin/sh
 
-# THIS SCRIPT IS NOT COMPLETE.
 #
 # This script installs the Openstack Controller node and the Network Node on 
 # one server.
@@ -19,18 +18,15 @@
 # 3. Set permissions in the database for other compute nodes.
 #    
 #    Use "add_computenode.sh" script.    
-# 
+#
 # Chathura M. Sarathchandra Magurawalage
 # email: csarata@essex.ac.uk
 #        77.chathura@gmail.com
 
 ((
 
-###############################################################################
-#Controller IP of the data network.
+#Controller IP
 CONTROLLER_IP_INT=10.10.10.1
-
-# Controller IP of the management network.
 CONTROLLER_IP_EXT=192.168.2.225
 
 ##################DO NOT ALTER#################################################
@@ -195,7 +191,7 @@ export SERVICE_TOKEN=password" > ~/novarc
   #export variables
 
 source novarc
-echo "source novarc" >> ~/.bashrc
+echo "source novarc" >> .bashrc
 
 # Fill keystone database
 ./keystone/keystone-data.sh
@@ -277,6 +273,7 @@ service cinder-scheduler restart
 service cinder-volume restart
 
 #[Quantum]
+
 #install quantum
 apt-get -y install quantum-server
 
@@ -293,6 +290,49 @@ service quantum-server restart
 apt-get install -y apache2 libapache2-mod-wsgi openstack-dashboard \
     memcached python-memcache
 
-echo "Controller node has been successfully configured"
+#[Network node installation]
+cp ./network/sysctl.conf /etc/sysctl.conf
+
+#Install open-vswitch
+apt-get install quantum-plugin-openvswitch-agent \
+quantum-dhcp-agent quantum-l3-agent
+
+service openvswitch-switch start
+
+ovs-vsctl add-br br-int
+ovs-vsctl add-br br-ex
+ovs-vsctl add-port br-ex br0
+ip link set up br-ex
+
+# quantum
+
+#Configure quantum services
+
+cp ./network/l3_agent.ini /etc/quantum/l3_agent.ini
+cp ./network/api-paste.ini /etc/quantum/api-paste.ini
+cp ./network/quantum.conf /etc/quantum/quantum.conf
+cp ./network/ovs_quantum_plugin.ini /etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini
+cp ./network/dhcp_agent.ini /etc/quantum/dhcp_agent.ini
+
+service quantum-plugin-openvswitch-agent start
+service quantum-dhcp-agent restart
+service quantum-l3-agent restart
+
+./network/quantum-networking.sh
+
+# Copy the external network ID
+EXT_NET_ID=$(get_id quantum net-show $EXT_NET_NAME)
+
+sed -i -e '/gateway_external_network_id =/ s/= .*/= $EXT_NET_ID/' /etc/quantum/l3_agent.ini 
+
+# Copy the provider router ID
+ROUTER_ID=$(get_id quantum router-show $PROV_ROUTER_NAME)
+
+sed -i -e '/router_id =/ s/= .*/= $ROUTER_ID/' /etc/quantum/l3_agent.ini
+
+# Restart L3 Agent :
+service quantum-l3-agent restart
+
+echo "Controller & Network node has been successfully configured"
 
 )) 2>&1 | tee $0.log
