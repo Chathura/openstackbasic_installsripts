@@ -1,9 +1,27 @@
-#! /bin/sh
+#!/bin/sh
 
-#This script is not complete
-
-#Setup the interfaces of the server first.
-# Need more than one disk attached to the server
+#
+# This script installs the Openstack Controller node and the Network Node on 
+# one server.
+#
+# BEFORE RUN THIS SCRIPT, YOU NEED TO DO THE FOLLOWINGS.
+#
+# 1. Setup the interfaces of the server first.
+# 2. Need more than one disk attached to the server. Then add the disk to 
+# cinder-volumes volume group.
+#
+# Create the volume [May differ according to your disk]
+#     fdisk /dev/sdb
+#     pvcreate /dev/sdb1
+#     vgcreate cinder-volumes /dev/sdb1
+# 
+# 3. Set permissions in the database for other compute nodes.
+#    
+#    Use "add_computenode.sh" script.    
+#
+# Chathura M. Sarathchandra Magurawalage
+# email: csarata@essex.ac.uk
+#        77.chathura@gmail.com
 
 ((
 
@@ -11,11 +29,13 @@
 CONTROLLER_IP_INT=10.10.10.1
 CONTROLLER_IP_EXT=192.168.2.225
 
+##################DO NOT ALTER#################################################
 #Provider router name
 PROV_ROUTER_NAME="provider-router"
 
-# Name of External Network (Don't change it!)
+# Name of External Network 
 EXT_NET_NAME="ext_net"
+###############################################################################
 
 # Function to get ID
 get_id () {
@@ -27,6 +47,25 @@ get_id () {
     echo "Not running as root: Need root permissions"
     exit
 fi
+
+while getopts l:c:p:hv option
+do 
+    case "${option}"
+    in
+        i) CONTROLLER_IP_INT=${OPTARG};;
+	e)n CONTROLLER_IP_EXT=${OPTARG};;
+	v) set -x;;
+        h) cat <<EOF 
+Usage: $0 [-i controller_ip_internal] [-e controller_ip_external]
+
+Add -v for verbose mode, -h to display this message.
+EOF
+exit 0
+;;
+	\?) echo "Use -h for help"
+	    exit 1;;
+    esac
+done
 
 #Ubuntu 12.04 LTS, use cloud archives for Folsom.
 
@@ -53,9 +92,6 @@ iface eth0 inet static
         netmask 255.255.255.0
         network 10.10.10.0
         broadcast 10.10.10.255
-        dns-search cluster.dcl.essex.ac.uk
-        dns-nameservers 127.0.0.1
-        dns-servers 127.0.0.1
 
 # Enable eth0.2
 auto eth0.2
@@ -105,8 +141,6 @@ GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'localhost' \
 IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'$CONTROLLER_IP_EXT' \
 IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'10.10.10.2' \
-IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'$CONTROLLER_IP_EXT' \
 IDENTIFIED BY 'password';
 CREATE DATABASE cinder;
@@ -120,8 +154,6 @@ GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' \
 IDENTIFIED BY 'password';
 CREATE DATABASE quantum;
 GRANT ALL PRIVILEGES ON quantum.* TO 'quantum'@'localhost' \
-IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON quantum.* TO 'quantum'@'10.10.10.2' \
 IDENTIFIED BY 'password';
 GRANT ALL PRIVILEGES ON quantum.* TO 'quantum'@'$CONTROLLER_IP_EXT' \
 IDENTIFIED BY 'password';
@@ -229,9 +261,9 @@ cp ./cinder/cinder.conf /etc/cinder/
 cp ./cinder/api-paste.ini /etc/cinder/
 
 #Create the volume [May differ according to your disk]
-fdisk /dev/sdb
-pvcreate /dev/sdb1
-vgcreate cinder-volumes /dev/sdb1
+#fdisk /dev/sdb
+#pvcreate /dev/sdb1
+#vgcreate cinder-volumes /dev/sdb1
 
 #Create cinder tables into the database
 cinder-manage db sync
