@@ -52,12 +52,12 @@ get_id () {
     exit
 fi
 
-while getopts l:c:p:hv option
+while getopts i:c:hv option
 do 
     case "${option}"
     in
         i) CONTROLLER_IP_INT=${OPTARG};;
-	e) CONTROLLER_IP_EXT=${OPTARG};;
+	c) CONTROLLER_IP_EXT=${OPTARG};;
 	v) set -x;;
         h) cat <<EOF 
 Usage: $0 [-i controller_ip_internal] [-e controller_ip_external]

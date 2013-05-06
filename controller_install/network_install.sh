@@ -33,13 +33,13 @@
 #   network/quantum.conf:
 #   rabbit_host
 #
-#   network/ovs_quantum_plugin.ini
+#   network/ovs_quantum_plugin.ini:
 #   sql_connection
 #   
 # 5.Then the following variable's IP address to the network nodes data network
 #   address.
 #
-#   network/ovs_quantum_plugin.ini
+#   network/ovs_quantum_plugin.ini:
 #   local_ip
 #   
 # 6. Alter the global variables in this script.
@@ -84,7 +84,7 @@ get_id () {
     exit
 fi
 
-while getopts i:e:n:t:s:r:hv option
+while getopts i:e:n:s:r:hv option
 do 
     case "${option}"
     in

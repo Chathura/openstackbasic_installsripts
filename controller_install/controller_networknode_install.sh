@@ -48,7 +48,7 @@ get_id () {
     exit
 fi
 
-while getopts l:c:p:hv option
+while getopts i:e:hv option
 do 
     case "${option}"
     in
